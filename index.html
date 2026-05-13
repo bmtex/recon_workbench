@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Contract Reconciliation Workbench</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --color-background-primary: #ffffff;
+      --color-background-secondary: #f5f5f3;
+      --color-background-tertiary: #eeede8;
+      --color-text-primary: #1a1a18;
+      --color-text-secondary: #6b6b68;
+      --color-border-tertiary: rgba(0,0,0,0.12);
+      --color-border-secondary: rgba(0,0,0,0.22);
+      --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      --border-radius-md: 8px;
+      --border-radius-lg: 12px;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --color-background-primary: #1e1e1c;
+        --color-background-secondary: #2a2a28;
+        --color-background-tertiary: #242422;
+        --color-text-primary: #e8e8e4;
+        --color-text-secondary: #9a9a96;
+        --color-border-tertiary: rgba(255,255,255,0.10);
+        --color-border-secondary: rgba(255,255,255,0.18);
+      }
+    }
+
+    body {
+      font-family: var(--font-sans);
+      font-size: 14px;
+      color: var(--color-text-primary);
+      background: var(--color-background-tertiary);
+      min-height: 100vh;
+      padding: 2rem 1rem;
+    }
+
+    .page-wrapper {
+      max-width: 960px;
+      margin: 0 auto;
+      background: var(--color-background-primary);
+      border-radius: var(--border-radius-lg);
+      border: 0.5px solid var(--color-border-tertiary);
+      padding: 1.75rem 2rem 2rem;
+    }
+
+    .workbench { padding: 0; }
+
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 1.25rem;
+      flex-wrap: wrap;
+    }
+    .toolbar-title { font-size: 18px; font-weight: 500; flex: 1; }
+    .toolbar-sub { font-size: 13px; color: var(--color-text-secondary); margin-top: 2px; display: block; }
+
+    .contract-nav { display: flex; align-items: center; gap: 8px; }
+    .nav-btn {
+      background: transparent;
+      border: 0.5px solid var(--color-border-secondary);
+      border-radius: var(--border-radius-md);
+      padding: 6px 12px;
+      cursor: pointer;
+      font-size: 13px;
+      color: var(--color-text-primary);
+      display: flex; align-items: center; gap: 4px;
+    }
+    .nav-btn:hover { background: var(--color-background-secondary); }
+    .contract-id-label {
+      font-size: 13px; font-weight: 500;
+      color: var(--color-text-secondary);
+      min-width: 120px; text-align: center;
+    }
+    .export-btn {
+      background: transparent;
+      border: 0.5px solid var(--color-border-secondary);
+      border-radius: var(--border-radius-md);
+      padding: 6px 14px; cursor: pointer;
+      font-size: 13px; color: var(--color-text-primary);
+      display: flex; align-items: center; gap: 6px;
+    }
+    .export-btn:hover { background: var(--color-background-secondary); }
+
+    .progress-label { font-size: 12px; color: var(--color-text-secondary); margin-bottom: 0.4rem; }
+    .progress-bar {
+      height: 4px; background: var(--color-background-secondary);
+      border-radius: 2px; margin-bottom: 1.25rem; overflow: hidden;
+    }
+    .progress-fill { height: 100%; background: #1D9E75; border-radius: 2px; transition: width 0.3s; }
+
+    .tabs {
+      display: flex;
+      border-bottom: 0.5px solid var(--color-border-tertiary);
+      margin-bottom: 1.25rem;
+    }
+    .tab {
+      padding: 8px 18px; font-size: 13px; font-weight: 500;
+      cursor: pointer; color: var(--color-text-secondary);
+      border-bottom: 2px solid transparent; margin-bottom: -1px;
+      background: none; border-top: none; border-left: none; border-right: none;
+    }
+    .tab:hover { color: var(--color-text-primary); }
+    .tab.active { color: var(--color-text-primary); border-bottom: 2px solid #378ADD; }
+    .tab-badge {
+      display: inline-block; background: var(--color-background-secondary);
+      border-radius: 99px; font-size: 11px; padding: 1px 7px;
+      margin-left: 5px; color: var(--color-text-secondary);
+    }
+    .tab-badge.warn { background: #FAEEDA; color: #854F0B; }
+
+    .section { display: none; }
+    .section.active { display: block; }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 180px 1fr 1fr 180px;
+      gap: 0;
+      border: 0.5px solid var(--color-border-tertiary);
+      border-radius: var(--border-radius-lg);
+      overflow: hidden;
+    }
+    .col-header {
+      padding: 10px 14px; font-size: 11px; font-weight: 500;
+      color: var(--color-text-secondary); background: var(--color-background-secondary);
+      border-bottom: 0.5px solid var(--color-border-tertiary);
+      text-transform: uppercase; letter-spacing: 0.04em;
+    }
+    .source-badge {
+      display: inline-block; padding: 2px 8px; border-radius: 99px;
+      font-size: 11px; font-weight: 500; margin-right: 4px;
+    }
+    .src-a { background: #E6F1FB; color: #0C447C; }
+    .src-b { background: #E1F5EE; color: #085041; }
+
+    .row { display: contents; }
+    .cell {
+      padding: 10px 14px;
+      border-bottom: 0.5px solid var(--color-border-tertiary);
+      border-right: 0.5px solid var(--color-border-tertiary);
+      display: flex; align-items: center;
+      background: var(--color-background-primary);
+      min-height: 48px;
+    }
+    .cell:last-child { border-right: none; }
+    .cell.field-label {
+      background: var(--color-background-secondary);
+      font-size: 13px; color: var(--color-text-secondary); font-weight: 500;
+    }
+    .cell.source-cell { cursor: pointer; transition: background 0.15s; position: relative; }
+    .cell.source-cell:hover { background: var(--color-background-secondary); }
+    .cell.source-cell.selected-a { background: #E6F1FB; border-left: 3px solid #378ADD; }
+    .cell.source-cell.selected-b { background: #E1F5EE; border-left: 3px solid #1D9E75; }
+    .cell.source-cell.conflict:not(.selected-a):not(.selected-b) { background: #FAEEDA; }
+    .cell.output-cell { background: var(--color-background-primary); font-size: 13px; }
+    .cell.output-cell.filled-a { color: #185FA5; font-weight: 500; }
+    .cell.output-cell.filled-b { color: #0F6E56; font-weight: 500; }
+    .cell.output-cell.empty { color: var(--color-text-secondary); font-style: italic; font-size: 12px; }
+    .cell.override-cell {
+      background: var(--color-background-primary);
+      padding: 8px 14px; flex-direction: column; align-items: stretch; gap: 6px;
+    }
+    .cell-value { font-size: 13px; }
+    .select-hint { font-size: 11px; color: var(--color-text-secondary); margin-top: 2px; }
+    .match-dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: #1D9E75; position: absolute; top: 8px; right: 8px;
+    }
+    .row:last-child .cell { border-bottom: none; }
+
+    .override-label { font-size: 11px; color: var(--color-text-secondary); font-weight: 500; margin-bottom: 4px; display: block; }
+    .override-input {
+      width: 100%; font-size: 13px; padding: 5px 8px;
+      border: 0.5px solid var(--color-border-secondary);
+      border-radius: var(--border-radius-md);
+      background: var(--color-background-primary);
+      color: var(--color-text-primary);
+      font-family: var(--font-sans); resize: none;
+    }
+    .override-input:focus { outline: none; border-color: #378ADD; }
+
+    .line-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 1rem; }
+    .line-tab {
+      padding: 4px 12px; font-size: 12px; border-radius: 99px;
+      border: 0.5px solid var(--color-border-secondary);
+      cursor: pointer; background: transparent; color: var(--color-text-secondary);
+    }
+    .line-tab:hover { background: var(--color-background-secondary); }
+    .line-tab.active { background: #E6F1FB; color: #185FA5; border-color: #378ADD; }
+    .line-tab.resolved { background: #E1F5EE; color: #0F6E56; border-color: #1D9E75; }
+    .line-tab.conflict { background: #FAEEDA; color: #854F0B; border-color: #BA7517; }
+
+    .lines-summary {
+      font-size: 12px; color: var(--color-text-secondary);
+      padding: 8px 12px; background: var(--color-background-secondary);
+      border-radius: var(--border-radius-md); margin-bottom: 1rem;
+      display: flex; gap: 16px; flex-wrap: wrap;
+    }
+    .summary-item { display: flex; align-items: center; gap: 5px; }
+    .sdot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+
+    .status-bar { display: flex; align-items: center; gap: 16px; margin-top: 1rem; flex-wrap: wrap; }
+    .status-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--color-text-secondary); }
+    .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .dot-conflict { background: #BA7517; }
+    .dot-match { background: #1D9E75; }
+    .dot-selected { background: #378ADD; }
+
+    .complete-banner {
+      display: none; background: #EAF3DE;
+      border: 0.5px solid #639922; border-radius: var(--border-radius-md);
+      padding: 10px 14px; font-size: 13px; color: #3B6D11;
+      margin-top: 1rem; align-items: center; gap: 8px;
+    }
+    .complete-banner.show { display: flex; }
+
+    @media (max-width: 700px) {
+      body { padding: 1rem 0.5rem; }
+      .page-wrapper { padding: 1rem; border-radius: var(--border-radius-md); }
+      .grid { grid-template-columns: 120px 1fr 1fr 120px; }
+      .col-header, .cell { padding: 8px 10px; font-size: 12px; }
+      .toolbar-title { font-size: 15px; }
+    }
+  </style>
+</head>
+<body>
+<div class="page-wrapper">
+  <div class="workbench">
+
+    <div class="toolbar">
+      <div style="flex:1">
+        <span class="toolbar-title">Contract reconciliation workbench</span>
+        <span class="toolbar-sub">PDF AI Extraction &nbsp;vs&nbsp; Plan B Billing Records</span>
+      </div>
+      <div class="contract-nav">
+        <button class="nav-btn" onclick="navigate(-1)"><i class="ti ti-chevron-left"></i> Prev</button>
+        <span class="contract-id-label" id="contract-label">Contract 1 of 5</span>
+        <button class="nav-btn" onclick="navigate(1)">Next <i class="ti ti-chevron-right"></i></button>
+      </div>
+      <button class="export-btn" onclick="exportCSV()"><i class="ti ti-download"></i> Export CSV</button>
+    </div>
+
+    <p class="progress-label" id="progress-label">0 fields resolved</p>
+    <div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
+
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('header')" id="tab-header">
+        Header fields <span class="tab-badge" id="badge-header"></span>
+      </button>
+      <button class="tab" onclick="switchTab('lines')" id="tab-lines">
+        Contract lines <span class="tab-badge" id="badge-lines"></span>
+      </button>
+    </div>
+
+    <div class="section active" id="section-header">
+      <div class="grid" id="main-grid">
+        <div class="col-header">Field</div>
+        <div class="col-header"><span class="source-badge src-a">A</span> PDF AI Extraction</div>
+        <div class="col-header"><span class="source-badge src-b">B</span> Plan B Billing Records</div>
+        <div class="col-header">Output (selected)</div>
+      </div>
+      <div class="status-bar">
+        <div class="status-item"><span class="dot dot-conflict"></span> Conflict — click to choose</div>
+        <div class="status-item"><span class="dot dot-match"></span> Match — auto-resolved</div>
+        <div class="status-item"><span class="dot dot-selected"></span> Selected</div>
+      </div>
+    </div>
+
+    <div class="section" id="section-lines">
+      <div class="lines-summary" id="lines-summary"></div>
+      <div class="line-tabs" id="line-tabs"></div>
+      <div class="grid" id="lines-grid">
+        <div class="col-header">Field</div>
+        <div class="col-header"><span class="source-badge src-a">A</span> PDF AI Extraction</div>
+        <div class="col-header"><span class="source-badge src-b">B</span> Plan B Billing Records</div>
+        <div class="col-header">Output (selected)</div>
+      </div>
+      <div class="status-bar">
+        <div class="status-item"><span class="dot dot-conflict"></span> Conflict — click to choose</div>
+        <div class="status-item"><span class="dot dot-match"></span> Match — auto-resolved</div>
+        <div class="status-item"><span class="dot dot-selected"></span> Selected</div>
+      </div>
+    </div>
+
+    <div class="complete-banner" id="complete-banner">
+      <i class="ti ti-circle-check"></i>
+      All fields and lines resolved for this contract.
+    </div>
+
+  </div>
+</div>
+
+<script>
+const contracts = [
+  {
+    id:"CTR-2024-001", client:"Apex Industries",
+    fields:[
+      {label:"Client name",    a:"Apex Industries Ltd",  b:"Apex Industries Ltd"},
+      {label:"Contract value", a:"$142,500",              b:"$148,000"},
+      {label:"Start date",     a:"2024-01-15",            b:"2024-01-15"},
+      {label:"End date",       a:"2024-12-31",            b:"2025-01-31"},
+      {label:"CSM",            a:"Sarah Chen",            b:"S. Chen"},
+      {label:"Payment terms",  a:"Net 30",                b:"Net 45"},
+    ],
+    lines:[
+      {label:"Line 1", product:{a:"Support Package Pro",   b:"Support Pkg Pro"},    qty:{a:"1",  b:"1"},   price:{a:"$95,000",  b:"$100,000"}, discount:{a:"10%",b:"5%"},  billingFreq:{a:"Annually", b:"Annually"},  billingType:{a:"Advance",b:"Advance"}, desc:""},
+      {label:"Line 2", product:{a:"Onboarding Services",   b:"Onboarding Services"},qty:{a:"3",  b:"3"},   price:{a:"$15,833",  b:"$16,000"},  discount:{a:"0%", b:"0%"},   billingFreq:{a:"Monthly",  b:"Quarterly"}, billingType:{a:"Arrears",b:"Arrears"}, desc:""},
+    ]
+  },
+  {
+    id:"CTR-2024-002", client:"Meridian Corp",
+    fields:[
+      {label:"Client name",    a:"Meridian Corp",          b:"Meridian Corporation"},
+      {label:"Contract value", a:"$85,000",                b:"$85,000"},
+      {label:"Start date",     a:"2024-03-01",             b:"2024-02-15"},
+      {label:"End date",       a:"2025-02-28",             b:"2025-02-28"},
+      {label:"CSM",            a:"James Okafor",           b:"James Okafor"},
+      {label:"Payment terms",  a:"Net 60",                 b:"Net 30"},
+    ],
+    lines:[
+      {label:"Line 1", product:{a:"Consulting Hours",      b:"Consulting Hours"},   qty:{a:"100",b:"100"}, price:{a:"$850",    b:"$850"},    discount:{a:"0%", b:"0%"},   billingFreq:{a:"Monthly",  b:"Monthly"},   billingType:{a:"Arrears",b:"Advance"}, desc:""},
+    ]
+  },
+  {
+    id:"CTR-2024-003", client:"Blue Peak Solutions",
+    fields:[
+      {label:"Client name",    a:"Blue Peak Solutions",    b:"Blue Peak Solutions"},
+      {label:"Contract value", a:"$210,000",               b:"$210,000"},
+      {label:"Start date",     a:"2024-06-01",             b:"2024-06-01"},
+      {label:"End date",       a:"2026-05-31",             b:"2027-05-31"},
+      {label:"CSM",            a:"Priya Nair",             b:"Priya Nair"},
+      {label:"Payment terms",  a:"Net 30",                 b:"Net 30"},
+    ],
+    lines:[
+      {label:"Line 1", product:{a:"Platform License",      b:"Platform License"},   qty:{a:"1",  b:"1"},   price:{a:"$120,000",b:"$120,000"}, discount:{a:"15%",b:"15%"}, billingFreq:{a:"Annually", b:"Annually"},  billingType:{a:"Advance",b:"Advance"}, desc:""},
+      {label:"Line 2", product:{a:"API Add-on",            b:"API Module"},         qty:{a:"5",  b:"5"},   price:{a:"$8,000",  b:"$8,000"},   discount:{a:"0%", b:"10%"}, billingFreq:{a:"Quarterly",b:"Monthly"},  billingType:{a:"Advance",b:"Advance"}, desc:""},
+      {label:"Line 3", product:{a:"Training",              b:"Training & Enablement"},qty:{a:"2",b:"2"},   price:{a:"$5,000",  b:"$4,500"},   discount:{a:"0%", b:"0%"},  billingFreq:{a:"Monthly",  b:"Monthly"},   billingType:{a:"Arrears",b:"Arrears"}, desc:""},
+    ]
+  },
+  {
+    id:"CTR-2024-004", client:"Hartwell Group",
+    fields:[
+      {label:"Client name",    a:"Hartwell Group LLC",     b:"Hartwell Group"},
+      {label:"Contract value", a:"$52,000",                b:"$52,500"},
+      {label:"Start date",     a:"2024-07-15",             b:"2024-07-15"},
+      {label:"End date",       a:"2024-12-15",             b:"2024-12-31"},
+      {label:"CSM",            a:"Tom Bradley",            b:"Tom Bradley"},
+      {label:"Payment terms",  a:"Upfront",                b:"50% upfront"},
+    ],
+    lines:[
+      {label:"Line 1", product:{a:"Implementation",        b:"Implementation Svc"}, qty:{a:"1",  b:"1"},   price:{a:"$40,000", b:"$40,000"},  discount:{a:"0%", b:"0%"},  billingFreq:{a:"Annually", b:"Annually"},  billingType:{a:"Advance",b:"Advance"}, desc:""},
+      {label:"Line 2", product:{a:"Custom Dev",            b:"Custom Development"}, qty:{a:"1",  b:"1"},   price:{a:"$12,000", b:"$12,500"},  discount:{a:"0%", b:"0%"},  billingFreq:{a:"Monthly",  b:"Quarterly"}, billingType:{a:"Advance",b:"Arrears"}, desc:""},
+    ]
+  },
+  {
+    id:"CTR-2024-005", client:"Novex Health",
+    fields:[
+      {label:"Client name",    a:"Novex Health Inc",       b:"Novex Health Inc"},
+      {label:"Contract value", a:"$320,000",               b:"$320,000"},
+      {label:"Start date",     a:"2024-09-01",             b:"2024-09-01"},
+      {label:"End date",       a:"2025-08-31",             b:"2025-08-31"},
+      {label:"CSM",            a:"Linda Marsh",            b:"Linda Marsh"},
+      {label:"Payment terms",  a:"Quarterly",              b:"Quarterly"},
+    ],
+    lines:[
+      {label:"Line 1", product:{a:"Enterprise License",    b:"Enterprise License"}, qty:{a:"1",  b:"1"},   price:{a:"$200,000",b:"$200,000"}, discount:{a:"10%",b:"10%"}, billingFreq:{a:"Annually", b:"Annually"},  billingType:{a:"Advance",b:"Advance"}, desc:""},
+      {label:"Line 2", product:{a:"24/7 Support",          b:"Support - Priority"}, qty:{a:"1",  b:"1"},   price:{a:"$60,000", b:"$60,000"},  discount:{a:"0%", b:"0%"},  billingFreq:{a:"Monthly",  b:"Monthly"},   billingType:{a:"Arrears",b:"Advance"}, desc:""},
+      {label:"Line 3", product:{a:"Compliance Module",     b:"Compliance Module"},  qty:{a:"1",  b:"1"},   price:{a:"$40,000", b:"$40,000"},  discount:{a:"5%", b:"0%"},  billingFreq:{a:"Quarterly",b:"Quarterly"},billingType:{a:"Arrears",b:"Arrears"}, desc:""},
+      {label:"Line 4", product:{a:"Data Export API",       b:"Data Export API"},    qty:{a:"2",  b:"2"},   price:{a:"$10,000", b:"$10,000"},  discount:{a:"0%", b:"0%"},  billingFreq:{a:"Monthly",  b:"Monthly"},   billingType:{a:"Arrears",b:"Arrears"}, desc:""},
+    ]
+  }
+];
+
+let currentIdx = 0;
+let currentTab = 'header';
+let currentLineIdx = 0;
+let headerSels = contracts.map(c => Array(c.fields.length).fill(null));
+let lineSels   = contracts.map(c => c.lines.map(() => ({product:null,qty:null,price:null,discount:null,billingFreq:null,billingType:null})));
+let lineDescs  = contracts.map(c => c.lines.map(() => ''));
+
+function isConflict(a, b) { return a.trim().toLowerCase() !== b.trim().toLowerCase(); }
+
+function switchTab(tab) {
+  currentTab = tab;
+  document.getElementById('section-header').className = 'section' + (tab === 'header' ? ' active' : '');
+  document.getElementById('section-lines').className  = 'section' + (tab === 'lines'  ? ' active' : '');
+  document.getElementById('tab-header').className = 'tab' + (tab === 'header' ? ' active' : '');
+  document.getElementById('tab-lines').className  = 'tab' + (tab === 'lines'  ? ' active' : '');
+  if (tab === 'lines') renderLines();
+}
+
+function mkSourceCell(val, isSelected, src, conflict, isPending, onclick) {
+  const cell = document.createElement('div');
+  cell.className = 'cell source-cell' + (isSelected ? ' selected-' + src : conflict && isPending ? ' conflict' : '');
+  cell.innerHTML = `<div><div class="cell-value">${val}</div>${conflict && isPending ? '<div class="select-hint">click to select</div>' : ''}</div>`;
+  if (!conflict) cell.innerHTML += `<span class="match-dot"></span>`;
+  cell.onclick = onclick;
+  return cell;
+}
+
+function renderHeader() {
+  const c = contracts[currentIdx];
+  const sel = headerSels[currentIdx];
+  const grid = document.getElementById('main-grid');
+  grid.querySelectorAll('.row').forEach(r => r.remove());
+  c.fields.forEach((f, i) => {
+    const conflict = isConflict(f.a, f.b);
+    const chosen = sel[i];
+    const row = document.createElement('div'); row.className = 'row';
+    const fc = document.createElement('div'); fc.className = 'cell field-label'; fc.textContent = f.label;
+    const ac = mkSourceCell(f.a, chosen === 'a', 'a', conflict, !chosen, () => { headerSels[currentIdx][i] = 'a'; renderHeader(); updateProgress(); });
+    const bc = mkSourceCell(f.b, chosen === 'b', 'b', conflict, !chosen, () => { headerSels[currentIdx][i] = 'b'; renderHeader(); updateProgress(); });
+    const oc = document.createElement('div');
+    if (chosen) { oc.className = 'cell output-cell filled-' + chosen; oc.textContent = chosen === 'a' ? f.a : f.b; }
+    else if (!conflict) { oc.className = 'cell output-cell filled-a'; oc.textContent = f.a; headerSels[currentIdx][i] = 'a'; }
+    else { oc.className = 'cell output-cell empty'; oc.textContent = '— pending'; }
+    row.appendChild(fc); row.appendChild(ac); row.appendChild(bc); row.appendChild(oc);
+    grid.appendChild(row);
+  });
+  updateProgress();
+}
+
+function renderLines() {
+  const c = contracts[currentIdx];
+  const tabBar = document.getElementById('line-tabs');
+  tabBar.innerHTML = '';
+  c.lines.forEach((line, li) => {
+    const sel = lineSels[currentIdx][li];
+    const keys = ['product','qty','price','discount','billingFreq','billingType'];
+    const hasConflict = keys.some(k => isConflict(line[k].a, line[k].b) && !sel[k]);
+    const allDone = keys.every(k => sel[k] !== null);
+    const btn = document.createElement('button');
+    btn.className = 'line-tab' + (li === currentLineIdx ? ' active' : '') + (allDone ? ' resolved' : hasConflict ? ' conflict' : '');
+    btn.textContent = line.label;
+    btn.onclick = () => { currentLineIdx = li; renderLines(); };
+    tabBar.appendChild(btn);
+  });
+
+  const li = currentLineIdx;
+  const line = c.lines[li];
+  const sel = lineSels[currentIdx][li];
+  const grid = document.getElementById('lines-grid');
+  grid.querySelectorAll('.row,.divider-row').forEach(r => r.remove());
+
+  function addDivider(label) {
+    const d = document.createElement('div'); d.className = 'divider-row';
+    d.style.cssText = 'grid-column:1/-1;padding:6px 14px;font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:0.06em;color:var(--color-text-secondary);background:var(--color-background-secondary);border-bottom:0.5px solid var(--color-border-tertiary);';
+    d.textContent = label; grid.appendChild(d);
+  }
+
+  function addRow(label, key) {
+    const conflict = isConflict(line[key].a, line[key].b);
+    const chosen = sel[key];
+    const row = document.createElement('div'); row.className = 'row';
+    const fc = document.createElement('div'); fc.className = 'cell field-label'; fc.textContent = label;
+    const ac = mkSourceCell(line[key].a, chosen === 'a', 'a', conflict, !chosen, () => { lineSels[currentIdx][li][key] = 'a'; renderLines(); updateProgress(); });
+    const bc = mkSourceCell(line[key].b, chosen === 'b', 'b', conflict, !chosen, () => { lineSels[currentIdx][li][key] = 'b'; renderLines(); updateProgress(); });
+    const oc = document.createElement('div');
+    if (chosen) { oc.className = 'cell output-cell filled-' + chosen; oc.textContent = chosen === 'a' ? line[key].a : line[key].b; }
+    else if (!conflict) { oc.className = 'cell output-cell filled-a'; oc.textContent = line[key].a; lineSels[currentIdx][li][key] = 'a'; }
+    else { oc.className = 'cell output-cell empty'; oc.textContent = '— pending'; }
+    row.appendChild(fc); row.appendChild(ac); row.appendChild(bc); row.appendChild(oc);
+    grid.appendChild(row);
+  }
+
+  addDivider('Product details');
+  addRow('Product', 'product');
+  addRow('Qty', 'qty');
+  addRow('Unit price', 'price');
+  addRow('Discount', 'discount');
+
+  addDivider('Billing');
+  addRow('Billing frequency', 'billingFreq');
+  addRow('Billing type', 'billingType');
+
+  addDivider('Override');
+  const descRow = document.createElement('div'); descRow.className = 'row';
+  const descLabel = document.createElement('div'); descLabel.className = 'cell field-label'; descLabel.textContent = 'Description override';
+  const descSpan = document.createElement('div');
+  descSpan.className = 'cell override-cell';
+  descSpan.style.gridColumn = '2 / 4';
+  const lbl = document.createElement('span'); lbl.className = 'override-label';
+  lbl.textContent = 'Free-text override (optional) — replaces product name on output';
+  const ta = document.createElement('textarea'); ta.className = 'override-input'; ta.rows = 2;
+  ta.placeholder = 'Leave blank to use selected product name…';
+  ta.value = lineDescs[currentIdx][li];
+  const descOut = document.createElement('div');
+  descOut.className = 'cell output-cell';
+  descOut.style.fontSize = '12px';
+  const refreshOut = () => {
+    const v = lineDescs[currentIdx][li];
+    descOut.textContent = v ? v : '(using product name)';
+    descOut.style.color = v ? '#185FA5' : 'var(--color-text-secondary)';
+    descOut.style.fontStyle = v ? 'normal' : 'italic';
+  };
+  ta.oninput = () => { lineDescs[currentIdx][li] = ta.value; refreshOut(); };
+  refreshOut();
+  descSpan.appendChild(lbl); descSpan.appendChild(ta);
+  descRow.appendChild(descLabel); descRow.appendChild(descSpan); descRow.appendChild(descOut);
+  grid.appendChild(descRow);
+
+  updateLineSummary();
+  updateProgress();
+}
+
+function updateLineSummary() {
+  const c = contracts[currentIdx];
+  const keys = ['product','qty','price','discount','billingFreq','billingType'];
+  const total = c.lines.length;
+  const resolved = c.lines.filter((_, li) => keys.every(k => lineSels[currentIdx][li][k] !== null)).length;
+  const conflicts = c.lines.filter((_, li) => keys.some(k => isConflict(c.lines[li][k].a, c.lines[li][k].b) && !lineSels[currentIdx][li][k])).length;
+  document.getElementById('lines-summary').innerHTML = `
+    <span class="summary-item"><span class="sdot" style="background:#1D9E75"></span>${resolved} of ${total} lines resolved</span>
+    <span class="summary-item"><span class="sdot" style="background:#BA7517"></span>${conflicts} line${conflicts !== 1 ? 's' : ''} with conflicts</span>`;
+}
+
+function updateProgress() {
+  const c = contracts[currentIdx];
+  const keys = ['product','qty','price','discount','billingFreq','billingType'];
+  const hDone = headerSels[currentIdx].filter(Boolean).length;
+  const lDone = c.lines.reduce((acc, _, li) => acc + keys.filter(k => lineSels[currentIdx][li][k] !== null).length, 0);
+  const total = c.fields.length + c.lines.length * keys.length;
+  const done = hDone + lDone;
+  const pct = Math.round((done / total) * 100);
+  document.getElementById('progress-fill').style.width = pct + '%';
+  document.getElementById('progress-label').textContent = `${done} of ${total} fields resolved (header + lines)`;
+  document.getElementById('contract-label').textContent = `Contract ${currentIdx + 1} of ${contracts.length}`;
+  document.getElementById('complete-banner').className = 'complete-banner' + (done === total ? ' show' : '');
+  updateTabBadges();
+}
+
+function updateTabBadges() {
+  const c = contracts[currentIdx];
+  const keys = ['product','qty','price','discount','billingFreq','billingType'];
+  const hP = c.fields.filter((f, i) => isConflict(f.a, f.b) && !headerSels[currentIdx][i]).length;
+  const lP = c.lines.reduce((acc, _, li) => acc + keys.filter(k => isConflict(c.lines[li][k].a, c.lines[li][k].b) && !lineSels[currentIdx][li][k]).length, 0);
+  const bh = document.getElementById('badge-header');
+  bh.textContent = hP > 0 ? `${hP} pending` : '✓ done';
+  bh.className = 'tab-badge' + (hP > 0 ? ' warn' : '');
+  const bl = document.getElementById('badge-lines');
+  bl.textContent = lP > 0 ? `${lP} pending` : '✓ done';
+  bl.className = 'tab-badge' + (lP > 0 ? ' warn' : '');
+}
+
+function navigate(dir) {
+  currentIdx = Math.max(0, Math.min(contracts.length - 1, currentIdx + dir));
+  currentLineIdx = 0;
+  renderHeader();
+  if (currentTab === 'lines') renderLines();
+  updateTabBadges();
+}
+
+function exportCSV() {
+  const lineFields = ['Product','Qty','Unit price','Discount','Billing frequency','Billing type','Description override'];
+  const maxLines = Math.max(...contracts.map(c => c.lines.length));
+  const lineHeaders = [];
+  for (let l = 1; l <= maxLines; l++) lineFields.forEach(f => lineHeaders.push(`Line ${l} — ${f}`));
+  const headers = ['Contract ID','Client',...contracts[0].fields.map(f => f.label),...lineHeaders];
+  const keyMap = {'Product':'product','Qty':'qty','Unit price':'price','Discount':'discount','Billing frequency':'billingFreq','Billing type':'billingType'};
+  const rows = [headers];
+  contracts.forEach((c, ci) => {
+    const hVals = c.fields.map((f, i) => headerSels[ci][i] === 'b' ? f.b : f.a);
+    const lVals = [];
+    for (let l = 0; l < maxLines; l++) {
+      if (l < c.lines.length) {
+        const line = c.lines[l]; const sel = lineSels[ci][l];
+        lineFields.forEach(lf => {
+          if (lf === 'Description override') lVals.push(lineDescs[ci][l]);
+          else { const k = keyMap[lf]; lVals.push(sel[k] === 'b' ? line[k].b : line[k].a); }
+        });
+      } else lineFields.forEach(() => lVals.push(''));
+    }
+    rows.push([c.id, c.client, ...hVals, ...lVals]);
+  });
+  const csv = rows.map(r => r.map(v => `"${v}"`).join(',')).join('\n');
+  const blob = new Blob([csv], {type:'text/csv'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = 'reconciled_contracts.csv'; a.click();
+  URL.revokeObjectURL(url);
+}
+
+renderHeader();
+updateTabBadges();
+</script>
+</body>
+</html>
